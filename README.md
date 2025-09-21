@@ -1,7 +1,7 @@
 # Cybersecurity Threats Analysis
 
 ## How to View
-View the report here: [Cybersecurity Threats Analysis](https://tobitob708.github.io/cybersecurity-threats-analysis/)
+View the report here: [Cybersecurity Threats Analysis](https://tobitob708.github.io/cybersecurity-threats-analysis/cybersecurity-threat-analysis.html)
 
 ## Introduction
 This project was developed as the **final project for MXB262 Visualising Data** at QUT.  
