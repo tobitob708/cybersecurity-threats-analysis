@@ -1,0 +1,221 @@
+---
+title: "Cybersecurity Threat Analysis"
+author: "Siti Keisha Nikola (MXB262)"
+date: "2025-05-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# install.packages("sf")
+# install.packages("giscoR")
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(sf)
+library(giscoR)
+library(leaflet)
+library(stringr)
+library(viridis)
+
+threatsData <- read.csv("Global_Cybersecurity_Threats_2015-2024.csv")
+
+```
+
+
+## Introduction 
+With the vast improvement in digital technologies over the past decade, the world has moved to a more digitally reliant society. While this is one of the biggest advancements human beings could have, it also introduces new vulnerabilities. Cyberattacks have been a global concern, targeting different industries across the world and causing major drawbacks. As technology continues to grow, it is important to understand where these cyber threats occur, the financial consequences they carry, and how long they take to be resolved.       
+
+Visualising these cybersecurity metrics can reveal trends and patterns that might not be apparent in the raw data. For instance, determining which countries or attack types most at risk helps in allocating resources and creating stronger security measures. These insights can be beneficial for different target audiences in multiple industries.  
+
+## Dataset Description  
+The dataset used in this report is "🌐 Global Cybersecurity Threats (2015-2024)" by Atharva Soundankar, sourced from [Kaggle](https://www.kaggle.com/datasets/atharvasoundankar/global-cybersecurity-threats-2015-2024). The dataset contains 3,000 observations and 10 variables. Each entry represents a cyber incident and includes the following key variables:    
+
+- Country: country where the attack took place  
+
+- Year: Year of the incident  
+
+- Attack Type: Type of cybersecurity threat   
+
+- Target Industry: Industry targeted   
+
+- Financial Loss ($M): Estimated financial loss in millions
+
+- Number of Affected Users: Number of users impacted by the attack  
+
+- Attack Source: Origin of the attack  
+
+- Security Vulnerability Type: Type of vulnerability 
+
+- Defense Mechanism Used: Cyber defense strategy applied  
+
+- Incident Resolution Time (Hours): Time taken to fully  resolve the incident   
+
+
+This dataset allows analysis to be done for both the quantitative impacts (such as financial loss and resolution time) and the qualitative aspects (such as attack origin and attack type). It also spans a wide range if industries and global regions, offering a diverse view of cybersecurity incidents. However, it is important to note that this dataset has not been verified by a credible source. Because of this restriction, the figures should be interpreted as indicative rather than definitive, and conclusions should be supported by further studies.  
+
+
+## Visualisation 1
+
+### Code and Output
+```{r, }
+world <- gisco_get_countries()
+
+threatsDataMutate <- threatsData %>%
+  mutate(Country = str_trim(Country)) %>%
+  mutate(Country = case_when(
+    Country == "USA" ~ "United States",
+    Country == "Russia" ~ "Russian Federation",
+    Country == "UK" ~ "United Kingdom",
+    TRUE ~ Country
+  ))
+
+incidentsPerCountry <- threatsDataMutate %>%
+  group_by(Country) %>%
+  summarise(incidents_total = n(), .groups = "drop")
+
+worldAttacks <- world %>%
+  left_join(incidentsPerCountry, by = c("NAME_ENGL" = "Country"))
+
+colour <- colorBin(palette = "Oranges", domain = worldAttacks$incidents_total, bins = 5, na.color = "lightgrey")
+
+leaflet(worldAttacks) %>%
+  addTiles() %>%
+  setView(lat = 20, lng = 80, zoom = 1) %>%
+  addPolygons(
+    fillColor = ~colour(incidents_total),
+    color = "white",
+    weight = 0.3,
+    opacity = 1,
+    fillOpacity = 0.8,
+    label = ~paste0(NAME_ENGL, ": ", incidents_total, " incidents"),
+    highlightOptions = highlightOptions(
+      weight = 1,
+      color = "#666",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    )) %>%
+  addLegend(
+    pal = colour,
+    values = ~incidents_total,
+    opacity = 0.7,
+    title = "Incidents Total",
+    position = "bottomright"
+  ) %>%
+  addControl(
+    html = '<div style="opacity: 0.7; background-color: white; padding: 6px; border-radius: 3px;">
+            <strong>Countries Targeted by Cyber attackers (2015-2024)</strong>
+          </div>', 
+    position = "topright")
+```  
+### Result
+The first visualisation is an interactive choropleth map to identify countries that were targeted by cyber attackers from 2015 to 2024. The target audiences for this visualisation are the general public and cybersecurity officers. To the general public, this map could raise awareness regarding global security threats around the world. This could help individuals who are in the countries attacked and those who may want to visit them to take protective measures necessary. On the other hand, valuable insights may be provided for cybersecurity officers, especially the Blue Team, who act as the first line of defence against these attacks. The map highlights regions where defences may be most strained and the importance of ensuring rapid detection, response, and mitigation of cyber incidents.   
+ 
+An interactive choropleth map was chosen as the visualisation because it displays the geographic distribution of the cyber incidents effectively. This plot type is especially suitable because the countries shown are scattered around the world. The viewers can zoom in and hover over the country to reveal its name and total incident, thus enhancing user engagement with the visualisation. A static choropleth map would require zooming out to show all countries, which could make individual regions harder to see and interpret clearly.  
+ 
+The aesthetics chosen have a purpose in communicating the data. Viewers can quickly identify the amount of threats in each country by utilising the function *colorBin()* to give a fixed range of 5 bins that acts as the colour scale. Labels were added to enhance clarity. The title is positioned in the top right corner, and the legend is placed in the bottom right corner to avoid cluttering the map and disrupting the overall view. The initial view is set to a longitude of 80 and a zoom level of 1 to allow viewers to view the entire map without being obscured by the title or legend.   
+
+
+## Visualisation 2
+
+### Code and Output
+```{r}
+totalLossByType <- threatsData %>%
+  group_by(Attack.Type) %>%
+  summarise(Total_Loss = sum(Financial.Loss..in.Million..., na.rm = TRUE)) %>%
+  arrange(desc(Total_Loss)) %>%
+  mutate(highlight = ifelse(Total_Loss == max(Total_Loss), "highlight", "normal"))
+
+
+ggplot(totalLossByType, aes(x = reorder(Attack.Type, Total_Loss), y = Total_Loss, fill = highlight))+
+  geom_col(show.legend = FALSE)+
+  coord_flip()+
+  scale_fill_manual(values = c("highlight" = "orangered", "normal" = "grey70")) +
+  labs(
+    title = "Distributed Denial of Service (DDoS) Attack Caused Highest Financial Loss",
+    subtitle = "Economic Impact of Cyberattack Types in Millions of US Dollars (2015-2024)",
+    x = "Attack Type",
+    y = "Total Financial Loss ($M)"
+  )+
+  theme_bw()+
+  theme(
+    plot.title = element_text(face = "bold", size = 11),
+    plot.subtitle = element_text(size = 10),
+    axis.title.x = element_text(size = 8, margin = margin(t = 10)),
+    axis.title.y = element_text(size = 9, margin = margin(r =  6)),
+    axis.text.y = element_text(size = 9)
+  )+
+  scale_y_continuous(
+    breaks = c(0, 5000, 10000, 15000, 20000, 25000)
+  )
+```
+  
+### Result
+After identifying the countries targeted and the number of incidents, this report looks at the financial impact suffered based on the type of attack done by these attackers. The chart explains that Distributed Denial of Service (DDoS) caused the most financial loss of approximately $27,000 million USD, follows closely by Phishing. The least financial damage was caused by Man-in-the-Middle attack with a total of around $24,000 million USD. This implies that the threat landscape is widespread, with even the country with the fewest attacks still experienced significant number of attacks.  
+
+### Justification
+Next, this visualisation is a horizontal bar chart that displays the total financial losses due to various types of cyberattacks from 2015 to 2024. This visualisation targets business leaders and cybersecurity professionals. Business leaders who are decision makers may be interested in understanding the financial implications of these attacks to make decisions that would protect their industry. Similar to the first visualisation, cybersecurity professionals can gain insights into the most common attacks done; therefore, they can allocate resources effectively to mitigate these threats and enhance defence strategies.  
+
+The horizontal bar chart was selected because of its clarity in comparing multiple categories with flipped coordinates so the attack types could be easier to read, especially those with longer names. The total loss was arranged in descending order, with the highest financial loss highlighted in orangered to draw immediate attention to the most significant threat. Also, the colour was chosen to maintain visual consistency with the colour of the previous visualisation while still maintaining the bar standing out and not clashing with the background. Labels were added to enhance clarity. The title was written in bold to give the main message of the plot. The theme is chosen to have a clear label, incorporating grid lines for better readability and utilising the boxed layout to help define the plot area clearly.  
+
+## Visualisation 3
+
+### Code and Output
+```{r}
+ggplot(threatsData, aes(x = Attack.Type, y = Incident.Resolution.Time..in.Hours.))+
+  geom_boxplot(fill = "white", color = "black")+
+  stat_summary(
+    fun = median,
+    geom = "crossbar",
+    color = "orangered",
+    size = 0.4
+  )+
+  geom_jitter(width = 0.3, alpha = 0.25, size = 1)+
+  labs(
+    title = "Attack Type Does Not Affect Resolution Type",
+    subtitle = "How Long It Takes to Resolve Different Cyber Attacks from 2015 to 2024",
+    x = "Attack Type",
+    y = "Resolution Time (Hours)"
+  )+
+  theme_light()+
+  theme(
+    plot.title = element_text(face = "bold", size = 15),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r =  10))
+  )+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))
+```
+  
+### Result
+After understanding that DDoS caused the most financial loss, this report looks at whether the time to resolve this incident is affected by attack type. This boxplot shows no clear trend in the medians therefore it can be concluded that the attack type does not affect resolution time. The overlaid scatterplot reveals a wide spread of values with no clear pattern, suggesting that resolution time varies a lot within each type, but it is not influenced by attack type itself. Therefore, all attack caused significant economic harm, as evidenced by the comparatively small difference in financial impact between the highest and lowest categories.   
+
+### Justification
+The last visualisation is a boxplot overlaid by scatter plots that examine the relationship between different attack types and time to resolve the incidents from 2014 to 2025. Its target audience is cybersecurity professionals who may require information on which type of attack is more time-consuming to allocate their resources accordingly.  
+ 
+The boxplot was chosen to illustrate the distribution of incident resolution times for each attack type. It highlights key statistics, like median and interquartile ranges, as well as the overall variability in resolution times. In addition, scatter plots are overlaid to show individual incident values. This helps to identify outliers and give the data density.  
+ 
+The chosen aesthetics are used to effectively communicate the visualisation. An orangered line was added for the median of the resolution time to make them stand out, as they are the main message of the data. The colour chosen was according to the theme from the previous visualisations to maintain visual consistency. A neutral grey was used for the remaining bars to avoid visual distraction and maintain focus on the most critical insight. To enhance clarity, labels were added, and long attack names were wrapped using *str_wrap()* to ensure the x-axis labels are clear. Similarly to the second visualisation, the title was written in bold to give the main message of the plot. The theme is chosen to have a clear label, incorporating grid lines for better readability and utilising the boxed layout to help define the plot area clearly.  
+
+# Roadblocks and How I Solved Them  
+The main roadblocks I encountered revolve around creating the first visualisation. It took some time to think about how I would visualise the map effectively. In this unit, only geographical maps were taught, but after implementing that, I saw the countries attacked to be too scattered. The main issue was that I could not zoom the visualisation to make it easier to see; otherwise, some countries would be hidden. Then I thought maybe I can do an interactive plot. I asked my tutor whether it was allowed, and I got a yes to give it a go. I chose *Leaflet* as it was one of the recommendations given by my tutor and tried to comprehend it by different websites.  
+
+Another challenge while making this visualisation was when some countries were not coloured in the map. Without them, the visualisation would not be complete, as some data did not show. It took some time to realise the problem, but I have found out that the names of the countries needed to be mutated to show in Leaflet. Next, when adding the title with *addControl()*, I was not pleased with how it looked because it was quite challenging to manipulate. To overcome this, I did HTML, and I was able to create a more polished presentation.  
+
+Lastly, implementing the highlighted bar in the third visualisation was another hurdle. I had planned to use the highest financial loss to direct the viewers' eyes to the main message, but I struggled in doing so. Discovering the *ifelse()* function was the answer to overcome this challenge, resulting in the plot above.   
+
+
+# Recommendations
+- Changing the colour scale from highest to lowest  
+
+I prefer to reverse the colour scale so that the highest would appear on top because I thought that it would be easier to interpret the numbers from highest to lowest. However, I tried everything I could, but I just could not get it to work. This unit does cover this type of model, as I heard from my tutor that it is for a higher-level class. Therefore, this is definitely not a skill to be developed in this unit. I took a gamble, and it was worth the effort, as I am very pleased with the result.  
+
+- Limitations in time-series analysis due to data gaps  
+
+This dataset lacks verified sources, so any conclusion may be interpreted with caution. I was planning to do a line plot for total financial loss per year. However, after plotting the graph and looking at the result, there was oddly a very major drop in around 2019. This raised a red flag, so I examined the dataset carefully, and there was not much information available about that year. I wanted to incorporate this in the report, but I did not because it may be because of incomplete or missing data instead of an almost non-existent cyberattack that year.  
+
+
+# Conclusion
+This project explored three visualisations with a cohesive narrative about cybersecurity threats from 2015 to 2024. The first visualisation reveals the countries targeted by cyber attackers, where the United Kingdom has the most digital threats, with 321 incidents. Next, financial implications due to the attacks based on their type in the second plot show that Distributed Denial of Service (DDoS) attacks caused the greatest financial loss. The final plot investigated whether resolution time varied by attack type and found that resolution times were not strongly affected by attack type. All of these plots were aimed to support better preparedness and smarter investment in defences and more informed decision-making. Although this dataset lacks full validation, it highlights the important pattern that may merit further investigation for future research.
