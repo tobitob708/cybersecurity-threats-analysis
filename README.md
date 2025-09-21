@@ -1,8 +1,5 @@
 # Cybersecurity Threats Analysis
 
-## How to View
-View the report here: [Cybersecurity Threats Analysis](https://tobitob708.github.io/cybersecurity-threats-analysis/cybersecurity-threat-analysis.html)
-
 ## Introduction
 This project was developed as the **final project for MXB262 Visualising Data** at QUT.  
 The dataset was sourced from **Kaggle** and covers global cybersecurity incidents from **2015–2024**, focusing on attack types, financial losses, and resolution times.  
@@ -31,7 +28,10 @@ This dataset allows analysis to be done for both the quantitative impacts (such 
 ## Tools
 - R  
 - ggplot2  
-- Leaflet  
+- Leaflet
+
+## How to View
+View the report here: [Cybersecurity Threats Analysis](https://tobitob708.github.io/cybersecurity-threats-analysis/cybersecurity-threat-analysis.html)
 
 ## Files
 - `Global_Cybersecurity_Threats_2015-2024.csv` → dataset (from Kaggle)  
